@@ -1,121 +1,185 @@
-class GPGPUComputeLayer {
+class ComputeLayer {
   constructor(options = {}) {
-    this.id = options.id || "GPGPUComputeLayer";
-    this.type = "custom";
-    this.renderingMode = "3d";
+    this.id = options.id || "ComputeLayer"; // 图层 ID
+    this.type = "custom"; // 固定值
+    this.renderingMode = "3d"; // 3D 渲染模式
 
-    // 着色器配置
+    this.texR = options.texR;
+
+    // 默认顶点着色器（简单全屏四边形）
     this.vertexShader =
       options.vertexShader ||
       `#version 300 es
-        in vec2 a_position;
-        out vec2 v_texCoord;
-        void main() {
-          v_texCoord = a_position * 0.5 + 0.5; // 转换为 [0,1] 纹理坐标
-          gl_Position = vec4(a_position, 0.0, 1.0);
-        }`;
+      in vec2 a_position;
+      out vec2 v_texCoord;
+      void main() {
+        v_texCoord = a_position * 0.5 + 0.5;
+        gl_Position = vec4(a_position, 0.0, 1.0);
+      }`;
 
-    this.fragmentShader = options.fragmentShader; // 必须传入
+    // 默认片段着色器（输出到纹理）
+    this.fragmentShader =
+      options.fragmentShader ||
+      `#version 300 es
+      precision highp float;
+      in vec2 v_texCoord;
+      uniform sampler2D u_inputTexture;
+      uniform vec2 u_resolution;
+      out vec4 outColor;
+      
+      // 自定义uniforms将通过字符串替换插入到这里
+      /* CUSTOM_UNIFORMS */
+      
+      void main() {
+        // 默认输出输入纹理（可以被自定义处理覆盖）
+        outColor = texture(u_inputTexture, v_texCoord);
+        
+        // 自定义uniforms处理可以通过字符串替换插入到这里
+        /* CUSTOM_UNIFORM_PROCESSING */
+      }`;
 
-    // Uniforms 配置（支持 texture 类型）
-    this.uniforms = options.uniforms || {};
-
-    // 纹理 Uniform 配置 { name: { texture: WebGLTexture, unit: number } }
-    this.textureUniforms = options.textureUniforms || {};
-
-    // 输出纹理配置
-    this.textureOptions = {
-      width: options.textureWidth || 512,
-      height: options.textureHeight || 512,
-      format: options.textureFormat || gl.RGBA,
-      type: options.textureType || gl.FLOAT,
-      ...options.textureOptions,
+    // 默认uniforms
+    this.uniforms = {
+      u_resolution: [1.0, 1.0], // 输出分辨率
+      // 合并自定义uniforms
+      ...(options.uniforms || {}),
     };
+
+    // 处理自定义uniforms的shader代码
+    if (options.customShaderCode) {
+      const { uniformDeclarations, uniformProcessing } =
+        options.customShaderCode;
+
+      // 插入自定义uniform声明
+      if (uniformDeclarations) {
+        this.fragmentShader = this.fragmentShader.replace(
+          "/* CUSTOM_UNIFORMS */",
+          uniformDeclarations
+        );
+      }
+
+      // 插入自定义uniform处理逻辑
+      if (uniformProcessing) {
+        this.fragmentShader = this.fragmentShader.replace(
+          "/* CUSTOM_UNIFORM_PROCESSING */",
+          uniformProcessing
+        );
+      }
+    }
+
+    // 输出纹理（由外部传入）
+    this.outputTexture = options.outputTexture || null;
+    // 帧缓冲区对象
+    this.fbo = null;
+    // 其他WebGL资源
+    this.glResources = {};
   }
 
   onAdd(map, gl) {
     this.gl = gl;
     this.map = map;
 
-    // 创建着色器程序
-    const vs = this.createShader(gl, gl.VERTEX_SHADER, this.vertexShader);
-    const fs = this.createShader(gl, gl.FRAGMENT_SHADER, this.fragmentShader);
-    this.program = this.createProgram(gl, vs, fs);
+    // 创建Shader和Program
+    const vertexShader = this.createShader(
+      gl,
+      gl.VERTEX_SHADER,
+      this.vertexShader
+    );
+    const fragmentShader = this.createShader(
+      gl,
+      gl.FRAGMENT_SHADER,
+      this.fragmentShader
+    );
+    this.program = this.createProgram(gl, vertexShader, fragmentShader);
 
-    // 创建全屏四边形
-    this.createFullscreenQuad(gl);
+    // 创建全屏四边形顶点数据
+    const positions = new Float32Array([
+      -1.0,
+      -1.0, // 左下
+      1.0,
+      -1.0, // 右下
+      -1.0,
+      1.0, // 左上
+      1.0,
+      1.0, // 右上
+    ]);
 
-    // 创建 FBO 和输出纹理
-    this.setupFramebuffer(gl);
+    // 创建VAO和VBO
+    this.vao = gl.createVertexArray();
+    gl.bindVertexArray(this.vao);
 
-    // 初始化 Uniform 位置
-    this.initUniforms(gl);
-  }
-
-  initUniforms(gl) {
-    gl.useProgram(this.program);
-    this.uniformLocations = {};
-
-    // 标准 Uniforms
-    for (const name in this.uniforms) {
-      this.uniformLocations[name] = gl.getUniformLocation(this.program, name);
-    }
-
-    // 纹理 Uniforms
-    this.textureUnits = {};
-    let textureUnit = 0;
-    for (const name in this.textureUniforms) {
-      const uniformInfo = this.textureUniforms[name];
-      this.uniformLocations[name] = gl.getUniformLocation(this.program, name);
-
-      // 分配纹理单元
-      this.textureUnits[name] = textureUnit;
-      gl.uniform1i(this.uniformLocations[name], textureUnit);
-      textureUnit++;
-    }
-  }
-
-  createFullscreenQuad(gl) {
-    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
-
-    this.quadVAO = gl.createVertexArray();
-    gl.bindVertexArray(this.quadVAO);
-
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-
+    // 顶点Buffer
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    this.glResources.positionBuffer = positionBuffer;
 
+    // 清理
     gl.bindVertexArray(null);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    // 初始化uniform locations
+    this.uniformLocations = {};
+    this.initUniformLocations(gl);
+
+    // 检查输入纹理是否有效
+    if (!this.uniforms.u_inputTexture) {
+      console.warn("Input texture not provided to ComputeLayer");
+    }
+
+    // 创建帧缓冲区对象
+    this.fbo = gl.createFramebuffer();
   }
 
-  setupFramebuffer(gl) {
-    // 创建输出纹理
-    this.outputTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, this.outputTexture);
-
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-    gl.texImage2D(
-      gl.TEXTURE_2D,
-      0,
-      this.textureOptions.format,
-      this.textureOptions.width,
-      this.textureOptions.height,
-      0,
-      this.textureOptions.format,
-      this.textureOptions.type,
-      null
+  // 初始化所有uniform locations
+  initUniformLocations(gl) {
+    this.uniformLocations.u_resolution = gl.getUniformLocation(
+      this.program,
+      "u_resolution"
     );
 
-    // 创建 FBO
-    this.fbo = gl.createFramebuffer();
+    // 自定义uniforms
+    for (const name in this.uniforms) {
+      if (!this.uniformLocations[name]) {
+        this.uniformLocations[name] = gl.getUniformLocation(this.program, name);
+      }
+    }
+    debugger;
+  }
+
+  // 设置uniform值
+  setUniform(name, value) {
+    if (this.uniforms.hasOwnProperty(name)) {
+      this.uniforms[name] = value;
+
+      // 如果是输入纹理，直接更新
+      if (name === "u_inputTexture" && value instanceof WebGLTexture) {
+        this.map.triggerRepaint();
+      }
+
+      this.map.triggerRepaint();
+      return true;
+    }
+    return false;
+  }
+
+  // 设置输出纹理
+  setOutputTexture(texture) {
+    this.outputTexture = texture;
+    if (this.map) {
+      this.map.triggerRepaint();
+    }
+  }
+
+  render(gl, matrix) {
+    if (!this.outputTexture) {
+      console.warn("No output texture set for ComputeLayer");
+      return;
+    }
+    debugger;
+    // 绑定帧缓冲区到输出纹理
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
     gl.framebufferTexture2D(
       gl.FRAMEBUFFER,
@@ -125,117 +189,136 @@ class GPGPUComputeLayer {
       0
     );
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-  }
+    // 设置视口大小匹配纹理尺寸
+    // const textureSize = this.getTextureSize(gl, this.outputTexture);
+    const textureSize = this.texR;
+    gl.viewport(0, 0, textureSize.width, textureSize.height);
 
-  render(gl, matrix) {
-    // 绑定到 FBO
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-    gl.viewport(0, 0, this.textureOptions.width, this.textureOptions.height);
-
-    // 清除缓冲区
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    // 使用着色器
+    // 使用我们的计算着色器程序
     gl.useProgram(this.program);
-    gl.bindVertexArray(this.quadVAO);
+    gl.bindVertexArray(this.vao);
 
-    // 绑定纹理 Uniforms
-    for (const name in this.textureUniforms) {
-      const { texture } = this.textureUniforms[name];
-      const unit = this.textureUnits[name];
-
-      gl.activeTexture(gl.TEXTURE0 + unit);
-      gl.bindTexture(gl.TEXTURE_2D, texture);
+    // 设置纹理uniforms
+    let textureUnit = 0;
+    for (const name in this.uniforms) {
+      const value = this.uniforms[name];
+      if (value instanceof WebGLTexture) {
+        const location = this.uniformLocations[name];
+        if (location != null) {
+          gl.activeTexture(gl.TEXTURE0 + textureUnit);
+          gl.bindTexture(gl.TEXTURE_2D, value);
+          gl.uniform1i(location, textureUnit);
+          textureUnit++;
+        }
+      }
     }
 
-    // 设置标准 Uniforms
-    for (const [name, value] of Object.entries(this.uniforms)) {
-      this.setUniform(gl, name, value);
+    // 设置内置uniforms
+    gl.uniform2fv(this.uniformLocations.u_resolution, [
+      textureSize.width,
+      textureSize.height,
+    ]);
+
+    // 设置自定义uniforms
+    for (const name in this.uniforms) {
+      if (
+        name.startsWith("u_") &&
+        this.uniformLocations[name] !== null &&
+        this.uniformLocations[name] !== undefined
+      ) {
+        const value = this.uniforms[name];
+        const location = this.uniformLocations[name];
+
+        if (Array.isArray(value)) {
+          switch (value.length) {
+            case 2:
+              gl.uniform2fv(location, value);
+              break;
+            case 3:
+              gl.uniform3fv(location, value);
+              break;
+            case 4:
+              gl.uniform4fv(location, value);
+              break;
+            default:
+              gl.uniform1f(location, value[0]);
+              break;
+          }
+        } else if (typeof value === "number") {
+          gl.uniform1f(location, value);
+        } else if (typeof value === "boolean") {
+          gl.uniform1i(location, value ? 1 : 0);
+        }
+      }
     }
 
-    // 绘制
+    // 禁用深度测试（对于全屏四边形不需要）
+    gl.disable(gl.DEPTH_TEST);
+
+    // 绘制全屏四边形
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-    // 清理状态
+    // 清理
     gl.bindVertexArray(null);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-    // 恢复视口
-    const canvas = gl.canvas;
-    gl.viewport(0, 0, canvas.width, canvas.height);
   }
 
-  setUniform(gl, name, value) {
-    const location = this.uniformLocations[name];
-    if (location === null) return;
-
-    if (typeof value === "number") {
-      gl.uniform1f(location, value);
-    } else if (value.length === 2) {
-      gl.uniform2fv(location, value);
-    } else if (value.length === 3) {
-      gl.uniform3fv(location, value);
-    } else if (value.length === 4) {
-      gl.uniform4fv(location, value);
-    } else if (value.length === 9) {
-      gl.uniformMatrix3fv(location, false, value);
-    } else if (value.length === 16) {
-      gl.uniformMatrix4fv(location, false, value);
-    }
-  }
-
-  // 添加/更新纹理 Uniform
-  setTextureUniform(name, texture, unit = null) {
-    if (!this.textureUniforms[name]) {
-      if (unit === null) {
-        // 自动分配新单元
-        unit = Object.keys(this.textureUniforms).length;
-      }
-      this.textureUniforms[name] = { texture, unit };
-    } else {
-      this.textureUniforms[name].texture = texture;
-      if (unit !== null) this.textureUniforms[name].unit = unit;
-    }
-  }
-
-  getOutputTexture() {
-    return this.outputTexture;
+  // 获取纹理尺寸
+  getTextureSize(gl, texture) {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    const width = gl.getTexParameter(gl.TEXTURE_2D, gl.TEXTURE_WIDTH);
+    const height = gl.getTexParameter(gl.TEXTURE_2D, gl.TEXTURE_HEIGHT);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    return { width, height };
   }
 
   onRemove(map, gl) {
-    gl.deleteProgram(this.program);
-    gl.deleteVertexArray(this.quadVAO);
-    gl.deleteFramebuffer(this.fbo);
-    gl.deleteTexture(this.outputTexture);
+    // 删除program和shaders
+    if (this.program) {
+      gl.deleteProgram(this.program);
+    }
+
+    // 删除VAO和VBOs
+    if (this.vao) {
+      gl.deleteVertexArray(this.vao);
+    }
+
+    // 删除所有缓冲区和纹理
+    for (const resource in this.glResources) {
+      if (this.glResources[resource] instanceof WebGLBuffer) {
+        gl.deleteBuffer(this.glResources[resource]);
+      }
+    }
+
+    // 删除帧缓冲区对象（但不删除输出纹理，因为它由外部管理）
+    if (this.fbo) {
+      gl.deleteFramebuffer(this.fbo);
+    }
   }
 
+  // Helper: 创建Shader
   createShader(gl, type, source) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      console.error(`Shader error: ${gl.getShaderInfoLog(shader)}`);
-      gl.deleteShader(shader);
-      return null;
+      console.error("Shader error:", gl.getShaderInfoLog(shader));
+      console.error("Shader source:", source);
     }
     return shader;
   }
 
-  createProgram(gl, vs, fs) {
+  // Helper: 创建Program
+  createProgram(gl, vertexShader, fragmentShader) {
     const program = gl.createProgram();
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error(`Program error: ${gl.getProgramInfoLog(program)}`);
-      gl.deleteProgram(program);
-      return null;
+      console.error("Program linking error:", gl.getProgramInfoLog(program));
     }
     return program;
   }
 }
 
-export default GPGPUComputeLayer;
+export default ComputeLayer;
