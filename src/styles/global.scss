@@ -1,0 +1,25 @@
+/* 
+全局适配函数
+用于将像素值转换为视口单位或相对于视口高度的百分比值
+*/
+
+@use 'sass:math';
+
+// 默认屏幕宽度和高度
+$defaultWidth: 1920px;
+$defaultHeight: 1080px;
+
+// 将像素转换为视口宽度单位（vw）
+@function vw($px) {
+    @return math.div($px, $defaultWidth) * 100vw;
+}
+
+// 将像素转换为视口高度单位（vh）
+@function vh($px) {
+    @return math.div($px, $defaultHeight) * 100vh;
+}
+
+// 根据默认高度将像素转换为相对于视口高度的百分比，用于设置字体大小
+@function fontSize($px) {
+    @return math.div($px , $defaultHeight) * 100vh;
+}

@@ -1,0 +1,32 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --animate-duration: 800ms;
+}
+
+body {
+  user-select: none;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+input {
+  padding-top: 0;
+  padding-bottom: 0;
+  outline: none;
+}
+
+select,
+input {
+  vertical-align: middle;
+}
+
+table {
+  border-collapse: collapse;
+}

@@ -1,0 +1,193 @@
+/* 修改Element Plus中的全局组件样式 */
+.el-popper.is-light {
+  border: none !important;
+  pointer-events: none;
+}
+
+.el-popper.my-sub-menu {
+  width: vw(160px);
+  background-color: transparent !important;
+
+  .el-menu {
+    visibility: hidden; // 临时隐藏
+    min-width: vw(160px);
+    background-color: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(2px);
+
+    .el-menu-item {
+      height: vh(36px);
+      justify-content: center;
+      background-color: transparent !important;
+      font-family: Source Han Sans CN;
+      font-weight: 400;
+      font-size: fontSize(16px);
+      color: #182437;
+      line-height: vh(40px);
+      font-style: normal;
+      text-transform: none;
+
+      &:hover {
+        color: #ED8000 !important;
+      }
+    }
+
+    .is-active {
+      color: #ED8000 !important;
+    }
+  }
+}
+
+$baseWidth : vw(140px);
+$selfWidth: vw(160px);
+
+.my-sub-menu {
+  position: relative;
+  left: calc($baseWidth/2 - $selfWidth/2);
+  border-radius: 4px;
+  pointer-events: auto;
+}
+
+.el-dialog {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(2px);
+  box-shadow: 0px 0 8px 0px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 4px !important;
+  border: 1px solid #ffffff;
+
+  .el-dialog__title {
+    font-family: Source Han Sans CN;
+    font-weight: 600;
+    font-size: fontSize(16px);
+    color: #182437;
+    text-align: left;
+    font-style: normal;
+    text-transform: none;
+  }
+
+  .el-dialog__headerbtn:hover .el-dialog__close {
+    color: #182437;
+  }
+
+  .inner-wrapper {
+    display: flex;
+    flex-direction: column;
+
+    .row {
+      .title {
+        font-family: Source Han Sans CN;
+        font-weight: 600;
+        font-size: fontSize(14px);
+        color: #182437;
+        text-align: left;
+        font-style: normal;
+        text-transform: none;
+      }
+
+      .flex-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 5px;
+
+        .chart-container {
+          width: 360px;
+          height: 200px;
+        }
+      }
+    }
+  }
+}
+
+/* 修改Mapmost中的控件样式 */
+.mapmostgl-control-container {
+  .mapmostgl-ctrl-top-right {
+    top: unset;
+    bottom: vh(155px);
+    z-index: 1004;
+
+    .mapmostgl-ctrl-group {
+      margin-right: vw(32px);
+      background-color: transparent;
+      border: none;
+      box-shadow: none;
+      pointer-events: none;
+
+      & button+button {
+        border: none;
+      }
+
+      .mapmostgl-ctrl-zoom-in,
+      .mapmostgl-ctrl-zoom-out {
+        width: vw(40px);
+        height: vw(40px);
+        background: rgba(255, 255, 255, 0.8);
+        pointer-events: auto;
+
+        &:hover {
+          background: rgba(239, 239, 239, 0.8)
+        }
+      }
+
+      .mapmostgl-ctrl-zoom-in {
+        position: relative;
+        box-shadow: 0 -3px 4px 0px rgba(0, 0, 0, 0.1);
+        border-radius: vw(20px) vw(20px) 0 0;
+        border: vw(1px) solid rgba(251, 216, 183, 0.8);
+        border-bottom: none;
+
+        .mapmostgl-ctrl-icon {
+          background-image: url('/images/common/icon_zoom_in.png');
+          background-position: center;
+        }
+
+        &::after {
+          content: '';
+          display: block;
+          position: absolute;
+          bottom: -vh(1px)/2;
+          left: 50%;
+          transform: translateX(-50%);
+          width: vw(24px);
+          height: vh(1px);
+          background: rgba(24, 36, 55, 0.2);
+        }
+      }
+
+      .mapmostgl-ctrl-zoom-out {
+        box-shadow: 0 4px 4px 0px rgba(0, 0, 0, 0.1);
+        border-radius: 0 0 vw(20px) vw(20px);
+        border: vw(1px) solid rgba(251, 216, 183, 0.8);
+        border-top: none;
+
+        .mapmostgl-ctrl-icon {
+          background-image: url('/images/common/icon_zoom_out.png');
+          background-position: center;
+        }
+
+      }
+
+      .mapmostgl-ctrl-compass {
+        width: vw(40px);
+        height: vw(40px);
+        margin-top: calc(vh(18px) + vw(40px));
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: 0px 0 4px 0px rgba(0, 0, 0, 0.1);
+        border-radius: vw(20px);
+        border: vw(1px) solid rgba(251, 216, 183, 0.8);
+        cursor: pointer;
+        pointer-events: auto;
+
+        .mapmostgl-ctrl-icon {
+          background-size: 50%;
+          background-image: url('/images/svg/compass.svg');
+          background-position: center;
+        }
+
+        &:hover {
+          background: rgba(239, 239, 239, 0.8)
+        }
+      }
+    }
+
+  }
+}

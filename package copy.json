@@ -1,0 +1,25 @@
+{
+  "name": "ice-avalanche-disaster",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:production": "vite build --mode production --outDir productionDist",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@turf/turf": "^7.1.0",
+    "axios": "^1.7.7",
+    "element-plus": "^2.8.1",
+    "pinia": "^2.2.2",
+    "sass": "^1.77.8",
+    "vue": "^3.4.37",
+    "vue-router": "^4.4.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.2",
+    "vite": "^5.4.1"
+  }
+}

@@ -1,0 +1,124 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+    {
+        "type": "Feature",
+        "properties":
+        {
+            "SmUserID": 0,
+            "名称": "基地1",
+            "经度": 95.711117,
+            "纬度": 29.824051269999999
+        },
+        "geometry":
+        {
+            "type": "Point",
+            "coordinates": [95.711117, 29.824051269999999]
+        }
+    },
+    {
+        "type": "Feature",
+        "properties":
+        {
+            "SmUserID": 0,
+            "名称": "基地2",
+            "经度": 95.6962031,
+            "纬度": 29.81820109
+        },
+        "geometry":
+        {
+            "type": "Point",
+            "coordinates": [95.6962031, 29.81820109]
+        }
+    },
+    {
+        "type": "Feature",
+        "properties":
+        {
+            "SmUserID": 0,
+            "名称": "基地3",
+            "经度": 95.70026605,
+            "纬度": 29.79823363
+        },
+        "geometry":
+        {
+            "type": "Point",
+            "coordinates": [95.70026605, 29.79823363]
+        }
+    },
+    {
+        "type": "Feature",
+        "properties":
+        {
+            "SmUserID": 0,
+            "名称": "基地4",
+            "经度": 95.69818982,
+            "纬度": 29.78286143
+        },
+        "geometry":
+        {
+            "type": "Point",
+            "coordinates": [95.69818982, 29.78286143]
+        }
+    },
+    {
+        "type": "Feature",
+        "properties":
+        {
+            "SmUserID": 0,
+            "名称": "基地5",
+            "经度": 95.69826473,
+            "纬度": 29.76727132
+        },
+        "geometry":
+        {
+            "type": "Point",
+            "coordinates": [95.69826473, 29.76727132]
+        }
+    },
+    {
+        "type": "Feature",
+        "properties":
+        {
+            "SmUserID": 0,
+            "名称": "基地6",
+            "经度": 95.70602417,
+            "纬度": 29.7534987
+        },
+        "geometry":
+        {
+            "type": "Point",
+            "coordinates": [95.70602417, 29.7534987]
+        }
+    },
+    {
+        "type": "Feature",
+        "properties":
+        {
+            "SmUserID": 0,
+            "名称": "基地7",
+            "经度": 95.67920384,
+            "纬度": 29.73582035
+        },
+        "geometry":
+        {
+            "type": "Point",
+            "coordinates": [95.67920384, 29.73582035]
+        }
+    },
+    {
+        "type": "Feature",
+        "properties":
+        {
+            "SmUserID": 0,
+            "名称": "基地8",
+            "经度": 95.66902232,
+            "纬度": 29.73997726
+        },
+        "geometry":
+        {
+            "type": "Point",
+            "coordinates": [95.66902232, 29.73997726]
+        }
+    }]
+}

@@ -1,0 +1,1 @@
+import{_ as e}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{c as o,o as t}from"./index-CyDigk4f.js";const c={class:"overview-wrapper"},r={__name:"index",setup(s){return(_,a)=>(t(),o("div",c))}},i=e(r,[["__scopeId","data-v-88bcb206"]]);export{i as default};

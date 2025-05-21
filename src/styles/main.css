@@ -1,0 +1,4 @@
+/* 全局样式入口 */
+@import '@/assets/font/index.scss';
+@import '@/styles/initialization.scss';
+@import '@/styles/custom.scss';

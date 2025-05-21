@@ -1,0 +1,1 @@
+import{c as e,o as t}from"./index-CyDigk4f.js";const o={style:{"background-color":"pink",width:"500px",height:"500px"}},_={__name:"index",setup(c){return(n,r)=>(t(),e("div",o))}};export{_ as default};
