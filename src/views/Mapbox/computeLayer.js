@@ -24,7 +24,6 @@ class ComputeLayer {
       precision highp float;
       in vec2 v_texCoord;
       uniform sampler2D u_inputTexture;
-      uniform vec2 u_resolution;
       out vec4 outColor;
       
       // 自定义uniforms将通过字符串替换插入到这里
@@ -40,7 +39,6 @@ class ComputeLayer {
 
     // 默认uniforms
     this.uniforms = {
-      u_resolution: [1.0, 1.0], // 输出分辨率
       // 合并自定义uniforms
       ...(options.uniforms || {}),
     };
@@ -125,9 +123,9 @@ class ComputeLayer {
     this.initUniformLocations(gl);
 
     // 检查输入纹理是否有效
-    if (!this.uniforms.u_inputTexture) {
-      console.warn("Input texture not provided to ComputeLayer");
-    }
+    // if (!this.uniforms.u_inputTexture) {
+    //   console.warn("Input texture not provided to ComputeLayer");
+    // }
 
     // 创建帧缓冲区对象
     this.fbo = gl.createFramebuffer();
@@ -135,10 +133,10 @@ class ComputeLayer {
 
   // 初始化所有uniform locations
   initUniformLocations(gl) {
-    this.uniformLocations.u_resolution = gl.getUniformLocation(
-      this.program,
-      "u_resolution"
-    );
+    // this.uniformLocations.u_resolution = gl.getUniformLocation(
+    //   this.program,
+    //   "u_resolution"
+    // );
 
     // 自定义uniforms
     for (const name in this.uniforms) {
@@ -158,7 +156,7 @@ class ComputeLayer {
         this.map.triggerRepaint();
       }
 
-      this.map.triggerRepaint();
+      this.map?.triggerRepaint();
       return true;
     }
     return false;
@@ -211,16 +209,16 @@ class ComputeLayer {
       }
     }
 
-    // 设置内置uniforms
-    gl.uniform2fv(this.uniformLocations.u_resolution, [
-      textureSize.width,
-      textureSize.height,
-    ]);
+    // // 设置内置uniforms
+    // gl.uniform2fv(this.uniformLocations.u_resolution, [
+    //   textureSize.width,
+    //   textureSize.height,
+    // ]);
 
     // 设置自定义uniforms
     for (const name in this.uniforms) {
       if (
-        name.startsWith("u_") &&
+        // name.startsWith("u_") &&
         this.uniformLocations[name] !== null &&
         this.uniformLocations[name] !== undefined
       ) {
@@ -243,7 +241,8 @@ class ComputeLayer {
               break;
           }
         } else if (typeof value === "number") {
-          gl.uniform1f(location, value);
+          if (name === "iFrame") gl.uniform1i(location, value);
+          else gl.uniform1f(location, value);
         } else if (typeof value === "boolean") {
           gl.uniform1i(location, value ? 1 : 0);
         }

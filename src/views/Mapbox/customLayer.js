@@ -285,7 +285,7 @@ class CustomLayer {
   setUniform(name, value) {
     if (this.uniforms.hasOwnProperty(name)) {
       this.uniforms[name] = value;
-      this.map.triggerRepaint();
+      this.map?.triggerRepaint();
       return true;
     }
     return false;
@@ -317,7 +317,7 @@ class CustomLayer {
     // 设置自定义uniforms
     for (const name in this.uniforms) {
       if (
-        name.startsWith("u_") &&
+        // name.startsWith("u_") &&
         this.uniformLocations[name] !== null &&
         this.uniformLocations[name] !== undefined
       ) {
@@ -340,13 +340,13 @@ class CustomLayer {
               break;
           }
         } else if (typeof value === "number") {
-          gl.uniform1f(location, value);
+          if (name === "iFrame") gl.uniform1i(location, value);
+          else gl.uniform1f(location, value);
         } else if (typeof value === "boolean") {
           gl.uniform1i(location, value ? 1 : 0);
         }
       }
     }
-
     // 启用深度测试
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
