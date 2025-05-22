@@ -146,7 +146,6 @@ class ComputeLayer {
         this.uniformLocations[name] = gl.getUniformLocation(this.program, name);
       }
     }
-    debugger;
   }
 
   // 设置uniform值
@@ -178,7 +177,6 @@ class ComputeLayer {
       console.warn("No output texture set for ComputeLayer");
       return;
     }
-    debugger;
     // 绑定帧缓冲区到输出纹理
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
     gl.framebufferTexture2D(
