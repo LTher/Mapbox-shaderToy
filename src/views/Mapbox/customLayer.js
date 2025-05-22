@@ -6,12 +6,12 @@ class CustomLayer {
 
     // 默认 Box 参数（minLngLat, maxLngLat, minHeight, maxHeight）
     this.box = options.box || {
-      minLng: 94.9674,
-      minLat: 27.6441,
+      minLng: 94.6674,
+      minLat: 29.4441,
       minHeight: 0,
-      maxLng: 96.9674,
-      maxLat: 29.6441,
-      maxHeight: 2000,
+      maxLng: 95.2674,
+      maxLat: 29.8441,
+      maxHeight: 8000,
     };
 
     // 默认顶点着色器（支持自定义attributes和uniforms）

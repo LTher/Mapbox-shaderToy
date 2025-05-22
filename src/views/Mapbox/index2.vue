@@ -529,12 +529,12 @@ void main()
    vec3 col = Render(vo, rayDir);
    tot += col;
    out_FragColor = vec4( tot, 1.0 );
-   out_FragColor = vec4(1.);
 }
 `;
 
     const camera = map.getFreeCameraOptions();
     const cameraPos = [camera._position.x, camera._position.y, camera._position.z]
+    debugger
 
     let time = 0, frame = 0, resolution = [512, 512]
 
@@ -600,36 +600,36 @@ void main()
 
     // 创建渲染层
 
-    const customLayer = new CustomLayer({
-        texR: { width: 512, height: 512 },
-        uniforms: {
-            iTime: time,
-            iFrame: frame,
-            iResolution: resolution,
-            cameraPos: cameraPos,
-            iChannel0: textureC,
-            iChannel1: terrainMap,
-        },
-        vertexShader: renderVertexShader,
-        fragmentShader: Command + renderShaderSource
-    });
     // const customLayer = new CustomLayer({
+    //     texR: { width: 512, height: 512 },
     //     uniforms: {
-    //         u_texture: textureC,
-    //         u_highlight: [1.0, 0.0, 0.0]
+    //         iTime: time,
+    //         iFrame: frame,
+    //         iResolution: resolution,
+    //         cameraPos: cameraPos,
+    //         iChannel0: textureC,
+    //         iChannel1: terrainMap,
     //     },
-    //     customShaderCode: {
-    //         uniformDeclarations: `
-    //   uniform sampler2D u_texture;
-    //   uniform vec3 u_highlight;
-    // `,
-    //         uniformProcessing: `
-    //   vec4 texColor = texture(u_texture, v_texCoord);
-    //   outColor = vec4(texColor.rgb, 1.0);
-    // //   outColor = vec4(u_highlight, 1.0);
-    // `
-    //     }
+    //     vertexShader: renderVertexShader,
+    //     fragmentShader: Command + renderShaderSource
     // });
+    const customLayer = new CustomLayer({
+        uniforms: {
+            u_texture: textureC,
+            u_highlight: [1.0, 0.0, 0.0]
+        },
+        customShaderCode: {
+            uniformDeclarations: `
+      uniform sampler2D u_texture;
+      uniform vec3 u_highlight;
+    `,
+            uniformProcessing: `
+      vec4 texColor = texture(u_texture, v_texCoord);
+      outColor = vec4(texColor.rgb, 1.0);
+    //   outColor = vec4(u_highlight, 1.0);
+    `
+        }
+    });
 
     map.on("load", function () {
         map.addSource("tileLayer", {
@@ -656,6 +656,8 @@ void main()
 
     });
     map.on('render', () => {
+        const newCamera = map.getFreeCameraOptions();
+        const newCameraPos = [newCamera._position.x, newCamera._position.y, newCamera._position.z]
         // 在每一帧中执行的逻辑
         const now = performance.now();
         time = now / 1000.;
@@ -670,6 +672,7 @@ void main()
         computeLayerD.setUniform('iTime', time)
         customLayer.setUniform('iFrame', frame)
         customLayer.setUniform('iTime', time)
+        customLayer.setUniform('cameraPos', newCameraPos)
     });
 
 });
