@@ -52,14 +52,8 @@ onMounted(async () => {
 
     // 公共变量
     const Command = `#version 300 es
-#ifdef GL_FRAGMENT_PRECISION_HIGH
     precision highp float;
     precision highp int;
-#else
-    precision mediump float;
-    precision mediump int;
-    #define highp mediump
-#endif
 const int textureSize = 512;
 // Render
 const vec3 backgroundColor = vec3(0.2);
@@ -136,9 +130,28 @@ vec2 hitBox(vec3 orig, vec3 dir) {
    vec3 tmax_tmp = (u_boxMax - orig) * inv_dir;
    vec3 tmin = min(tmin_tmp, tmax_tmp);
    vec3 tmax = max(tmin_tmp, tmax_tmp);
-   float t0 = max(tmin.x, max(tmin.y, tmin.z)) / (u_boxMax.x - u_boxMin.x) /5.;
-   float t1 = min(tmax.x, min(tmax.y, tmax.z)) / (u_boxMax.x - u_boxMin.x) /5.;
+   float t0 = max(tmin.x, max(tmin.y, tmin.z)) / (u_boxMax.x - orig.x);
+   float t1 = min(tmax.x, min(tmax.y, tmax.z)) / (u_boxMax.x - orig.x);
    return vec2(t0, t1);
+}
+
+vec2 iBox( in vec3 ro, in vec3 rd, in vec3 boxSize ) 
+{
+    vec3 m = sign(rd)/max(abs(rd), 1e-8);
+    vec3 n = m*ro;
+    vec3 k = abs(m)*boxSize;
+	
+    vec3 t1 = -n - k;
+    vec3 t2 = -n + k;
+
+	float tN = max( max( t1.x, t1.y ), t1.z );
+	float tF = min( min( t2.x, t2.y ), t2.z );
+	
+    if (tN > tF || tF <= 0.) {
+        return vec2(10.);
+    } else {
+        return vec2(tN, tF);
+    }
 }
 
 // Fog by IQ https://iquilezles.org/articles/fog
@@ -394,9 +407,13 @@ void main( )
                v_pos = a_pos;
                v_st = a_texCoord;
                gl_Position = u_matrix * vec4(a_pos, 1.0);
+            //    gl_Position = a_pos;
 
                vo = cameraPos;
                vd = v_pos - vo;
+            //    vec4 vo_m = u_matrix * vec4(cameraPos, 1.0);
+            //    vo = vo_m.xyz / vo_m.w;
+            //    vd = gl_Position.xyz / gl_Position.w - vo;
              }`
     const renderShaderSource = `
 // Created by David Gallardo - xjorma/2021
@@ -416,11 +433,13 @@ const float boxHeight = 0.45;
 vec2 getHeight(in vec3 p)
 {
    p = (p + 1.0) * 0.5;
-   vec2 p2 = p.xz * vec2(float(textureSize)) / iResolution.xy;
+   p.xy = (p.xy - u_boxMin.xy) / (u_boxMax.xy - u_boxMin.xy);
+   vec2 p2 = p.xy * vec2(float(textureSize)) / iResolution.xy;
    p2 = min(p2, vec2(float(textureSize) - 0.5) / iResolution.xy);
    vec2 h = texture(iChannel0, p2).xy;
    h.y += h.x;
-   return h - boxHeight;
+//    return h - boxHeight;
+   return (h - boxHeight) * (u_boxMax.z - u_boxMin.z);
 } 
 
 vec3 getNormal(in vec3 p, int comp)
@@ -462,7 +481,10 @@ vec3 Render(in vec3 ro, in vec3 rd) {
    vec3 n;
    vec3 rayDir = normalize(rd);
    vec2 ret = hitBox(ro, rayDir);
+//    vec2 ret = iBox(ro, rayDir, (u_boxMax - u_boxMin));
 //    if (ret.x > ret.y) discard;
+//    return vec3(ret,0.);
+//    return abs(rd);
    ret.x = max(ret.x, 0.0);
    vec3 p = ro + ret.x * rayDir;
    
@@ -473,14 +495,14 @@ vec3 Render(in vec3 ro, in vec3 rd) {
        float tt = ret.x;
        vec2 h = getHeight(pi);
        float spec;
-       if(pi.y < h.x) {
+       if(pi.z < h.x) {
            tn = n;
-           tc = undergroundColor(h.x - pi.y);
+           tc = undergroundColor(h.x - pi.z);
        }
        else {
            for (int i = 0; i < 80; i++) {
                vec3 p = ro + rd * tt;
-               float h = p.y - getHeight(p).x;
+               float h = p.z - getHeight(p).x;
                if (h < 0.0002 || tt > ret.y)
                break;
                tt += h * 0.4;
@@ -500,13 +522,13 @@ vec3 Render(in vec3 ro, in vec3 rd) {
        float wt = ret.x;
        h = getHeight(pi);
        vec3 waterNormal;
-       if(pi.y < h.y) {
+       if(pi.z < h.y) {
            waterNormal = n;
        }
        else {
            for (int i = 0; i < 80; i++) {
                vec3 p = ro + rd * wt;
-               float h = p.y - getHeight(p).y;
+               float h = p.z - getHeight(p).y;
                if (h < 0.0002 || wt > min(tt, ret.y))
                break;
                wt += h * 0.4;
@@ -548,7 +570,6 @@ void main()
 
     const camera = map.getFreeCameraOptions();
     const cameraPos = [camera._position.x, camera._position.y, camera._position.z]
-    debugger
 
     let time = 0, frame = 0, resolution = [512, 512]
 

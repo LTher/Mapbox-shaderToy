@@ -11,7 +11,7 @@ class CustomLayer {
       minHeight: 0,
       maxLng: 95.2674,
       maxLat: 29.8441,
-      maxHeight: 8000,
+      maxHeight: 32000,
     };
 
     // 默认顶点着色器（支持自定义attributes和uniforms）
@@ -57,6 +57,8 @@ class CustomLayer {
     // 移除内置纹理相关参数，完全由用户自定义
     this.uniforms = {
       u_color: [0.5, 0.5, 1.0],
+      u_boxMin: [0, 0, 0], // 将在onAdd中更新
+      u_boxMax: [0, 0, 0], // 将在onAdd中更新
       ...(options.uniforms || {}),
     };
     // 处理自定义uniforms的shader代码
@@ -119,13 +121,41 @@ class CustomLayer {
 
     // 转换为墨卡托坐标
     const positions = [];
+    const xValues = [], yValues = [], zValues = [];
     corners.forEach((corner) => {
       const mkt = mapboxgl.MercatorCoordinate.fromLngLat(
         { lng: corner[0], lat: corner[1] },
         corner[2]
       );
+      xValues.push(mkt.x);
+      yValues.push(mkt.y);
+      zValues.push(mkt.z);
       positions.push(mkt.x, mkt.y, mkt.z);
     });
+
+    debugger
+    // 计算实际包围盒范围
+    this.actualBox = {
+      minX: Math.min(...xValues),
+      maxX: Math.max(...xValues),
+      minY: Math.min(...yValues),
+      maxY: Math.max(...yValues),
+      minZ: Math.min(...zValues),
+      maxZ: Math.max(...zValues),
+    };
+
+    // 更新包围盒uniforms
+    this.uniforms.u_boxMin = [
+      this.actualBox.minX,
+      this.actualBox.minY,
+      this.actualBox.minZ,
+    ];
+    this.uniforms.u_boxMax = [
+      this.actualBox.maxX,
+      this.actualBox.maxY,
+      this.actualBox.maxZ,
+    ];
+    debugger
 
     // 定义纹理坐标
     const texCoords = [
