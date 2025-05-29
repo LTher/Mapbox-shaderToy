@@ -232,6 +232,7 @@ void main( )
        totalInFlow += readOutFlow(p  + ivec2( 0, -1)).y;
        waterDept = height.y - totalOutFlow + totalInFlow;
    }
+//    if(uv.x<0.5&&uv.y<.5) waterDept = 0.;
    out_FragColor = vec4(terrainElevation, waterDept, 0, 1);
 }
 `;
@@ -293,8 +294,6 @@ void main()
 
 
    out_FragColor = nOutFlow;
-
-   out_FragColor = vec4(height.x, 0., 0., 1.);
 }
 `;
 
@@ -491,7 +490,7 @@ vec3 Render(in vec3 ro, in vec3 rd) {
        vec3 tn;
        float tt = ret.x;
        vec2 h = getHeight(npi);
-    //    return vec3(h.x);
+    //    return vec3(h.y);
        float spec;
        if(npi.z < h.x) {
            tn = n;
@@ -804,8 +803,8 @@ function isPowerOf2(value) {
  */
 function createColoredTexture(gl, color, options = {}) {
     const {
-        width = 256,
-        height = 256,
+        width = 512,
+        height = 512,
         textureUnit = 0
     } = options;
 
