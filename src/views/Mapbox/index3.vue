@@ -233,7 +233,6 @@ void main( )
        waterDept = height.y - totalOutFlow + totalInFlow;
    }
    out_FragColor = vec4(terrainElevation, waterDept, 0, 1);
-//    out_FragColor = vec4(waterDept, terrainElevation, 0, 1);
 }
 `;
 
@@ -429,17 +428,15 @@ in vec3 vo;
 in vec3 vd;
 in vec2 v_st;
 const vec3 light = vec3(0.,4.,2.);
-const float boxHeight = 0.45;
+const float boxHeight = 0.;
 
 vec3 normalizeP(vec3 p)
 {
    return (p - u_boxMin) / (u_boxMax - u_boxMin);
 }
+
 vec2 getHeight(in vec3 p)
 {
-//    p = (p + 1.0) * 0.5;
-//    p.xy = (p.xy - u_boxMin.xy) / (u_boxMax.xy - u_boxMin.xy);
-   p.xyz = normalizeP(p.xyz);
    vec2 p2 = p.xy * vec2(float(textureSize)) / iResolution.xy;
    p2 = min(p2, vec2(float(textureSize) - 0.5) / iResolution.xy);
    vec2 h = texture(iChannel0, p2).xy;
@@ -450,21 +447,15 @@ vec2 getHeight(in vec3 p)
 
 vec3 getNormal(in vec3 p, int comp)
 {
-   float d = 2.0 / float(textureSize) * abs(u_boxMax.x - u_boxMin.x);
+   float d = 2.0 / float(textureSize);
    float hMid = getHeight(p)[comp];
    float hRight = getHeight(p + vec3(d, 0, 0))[comp];
    float hTop = getHeight(p + vec3(0, 0, d))[comp];
-
-//    hMid = (hMid - u_boxMin.z)/(u_boxMax.z - u_boxMin.z);
-//    hRight = (hRight - u_boxMin.z)/(u_boxMax.z - u_boxMin.z);
-//    hTop = (hTop - u_boxMin.z)/(u_boxMax.z - u_boxMin.z);
-
    return normalize(cross(vec3(0, hTop - hMid, d), vec3(d, hRight - hMid, 0)));
 }
 
 vec3 terrainColor(in vec3 p, in vec3 n, out float spec)
 {
-   p.xy = (p.xy - u_boxMin.xy) / (u_boxMax.xy - u_boxMin.xy);
    spec = 0.1;
    vec3 c = vec3(0.21, 0.50, 0.07);
    float cliff = smoothstep(0.8, 0.3, n.y);
@@ -491,42 +482,36 @@ vec3 Render(in vec3 ro, in vec3 rd) {
    vec3 n;
    vec3 rayDir = normalize(rd);
    vec2 ret = hitBox(ro, rayDir);
-//    vec2 ret = iBox(ro, rayDir, (u_boxMax - u_boxMin));
    if (ret.x > ret.y) discard;
-//    return vec3(ret,0.);
-//    return abs(rd);
-//    ret.x = max(ret.x, 0.0);
    vec3 p = ro + ret.x * rayDir;
-
-//    return vec3((p.xy - u_boxMin.xy) / (u_boxMax.xy - u_boxMin.xy),0.);
-//    if(p.z > (u_boxMax.z - u_boxMin.z)*0.5) return vec3(0.,1.,0.);
-//    else return vec3(0.,1.,1.);
    
    if(ret.x > 0.0) {
        vec3 pi = ro + rd * ret.x;
+       vec3 npi = normalizeP(pi);
        vec3 tc;
        vec3 tn;
        float tt = ret.x;
-       vec2 h = getHeight(pi);
+       vec2 h = getHeight(npi);
     //    return vec3(h.x);
        float spec;
-       if(pi.z < h.x) {
+       if(npi.z < h.x) {
            tn = n;
-           tc = undergroundColor(h.x - (pi.z - u_boxMin.z)/(u_boxMax.z - u_boxMin.z));
+           tc = undergroundColor(h.x - npi.z);
        }
        else {
            for (int i = 0; i < 800; i++) {
                vec3 p = ro + rd * tt;
-               float h = (p.z - u_boxMin.z)/(u_boxMax.z - u_boxMin.z) - getHeight(p).x;
+               vec3 np = normalizeP(p);
+               float h = np.z - getHeight(np).x;
                if (h < 0.0002 || tt > ret.y)
                break;
                tt += p.z * 0.04;
            }
-           tn = getNormal(ro + rd * tt, 0);
-           tc = terrainColor(ro + rd * tt, tn, spec);
+           tn = getNormal(normalizeP(ro + rd * tt), 0);
+           tc = terrainColor(normalizeP(ro + rd * tt), tn, spec);
        }
        {   
-           vec3 lightDir = normalize(light - (ro + rd * tt));
+           vec3 lightDir = normalize(light - normalizeP(ro + rd * tt));
            tc = tc * (max( 0.0, dot(lightDir, tn)) + 0.3);
            spec *= pow(max(0., dot(lightDir, reflect(rd, tn))), 10.0);
            tc += spec;
@@ -535,25 +520,26 @@ vec3 Render(in vec3 ro, in vec3 rd) {
            tc = vec3(0, 0, 0.04);
        }
        float wt = ret.x;
-       h = getHeight(pi);
+       h = getHeight(npi);
        vec3 waterNormal;
-       if(pi.z < h.y) {
+       if(npi.z < h.y) {
            waterNormal = n;
        }
        else {
            for (int i = 0; i < 800; i++) {
                vec3 p = ro + rd * wt;
-               float h = (p.z - u_boxMin.z)/(u_boxMax.z - u_boxMin.z)  - getHeight(p).y;
+               vec3 np = normalizeP(p);
+               float h = np.z  - getHeight(np).y;
                if (h < 0.0002 || wt > min(tt, ret.y))
                break;
-               wt += p.z* 0.4;
+               wt += p.z* 0.04;
            }
-           waterNormal = getNormal(ro + rd * wt, 1);
+           waterNormal = getNormal(normalizeP(ro + rd * wt), 1);
        }
        if(wt < ret.y) {
-           float dist = (min(tt, ret.y) - wt);
+           float dist = (min(tt, ret.y) - wt) / (ret.y-ret.x) ;
            vec3 p = waterNormal;
-           vec3 lightDir = normalize(light - (ro + rd * wt));
+           vec3 lightDir = normalize(light - normalizeP(ro + rd * wt));
            tc = applyFog( tc, vec3(0, 0, 0.4), dist * 15.0);
            float spec = pow(max(0., dot(lightDir, reflect(rd, waterNormal))), 20.0);
            tc += 0.5 * spec * smoothstep(0.0, 0.1, dist);
@@ -563,7 +549,6 @@ vec3 Render(in vec3 ro, in vec3 rd) {
        return tc;
    }
   discard;
-// return vec3(1.,0.,0.);
 }
 
 vec3 vignette(vec3 color, vec2 q, float v)
