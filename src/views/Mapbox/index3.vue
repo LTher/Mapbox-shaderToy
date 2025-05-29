@@ -442,7 +442,6 @@ vec2 getHeight(in vec3 p)
    vec2 h = texture(iChannel0, p2).xy;
    h.y += h.x;
    return h - boxHeight;
-//    return (h - boxHeight) * (u_boxMax.z - u_boxMin.z);
 } 
 
 vec3 getNormal(in vec3 p, int comp)
@@ -450,8 +449,8 @@ vec3 getNormal(in vec3 p, int comp)
    float d = 2.0 / float(textureSize);
    float hMid = getHeight(p)[comp];
    float hRight = getHeight(p + vec3(d, 0, 0))[comp];
-   float hTop = getHeight(p + vec3(0, 0, d))[comp];
-   return normalize(cross(vec3(0, hTop - hMid, d), vec3(d, hRight - hMid, 0)));
+   float hTop = getHeight(p + vec3(0, d, 0))[comp];
+   return normalize(cross(vec3(hTop - hMid, d, 0), vec3(d, hRight - hMid, 0)));
 }
 
 vec3 terrainColor(in vec3 p, in vec3 n, out float spec)
