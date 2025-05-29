@@ -130,8 +130,8 @@ vec2 hitBox(vec3 orig, vec3 dir) {
    vec3 tmax_tmp = (u_boxMax - orig) * inv_dir;
    vec3 tmin = min(tmin_tmp, tmax_tmp);
    vec3 tmax = max(tmin_tmp, tmax_tmp);
-   float t0 = max(tmin.x, max(tmin.y, tmin.z)) / (u_boxMax.x - orig.x);
-   float t1 = min(tmax.x, min(tmax.y, tmax.z)) / (u_boxMax.x - orig.x);
+   float t0 = max(tmin.x, max(tmin.y, tmin.z));
+   float t1 = min(tmax.x, min(tmax.y, tmax.z));
    return vec2(t0, t1);
 }
 
@@ -430,38 +430,50 @@ in vec3 vd;
 in vec2 v_st;
 const vec3 light = vec3(0.,4.,2.);
 const float boxHeight = 0.45;
+
+vec3 normalizeP(vec3 p)
+{
+   return (p - u_boxMin) / (u_boxMax - u_boxMin);
+}
 vec2 getHeight(in vec3 p)
 {
-   p = (p + 1.0) * 0.5;
-   p.xy = (p.xy - u_boxMin.xy) / (u_boxMax.xy - u_boxMin.xy);
+//    p = (p + 1.0) * 0.5;
+//    p.xy = (p.xy - u_boxMin.xy) / (u_boxMax.xy - u_boxMin.xy);
+   p.xyz = normalizeP(p.xyz);
    vec2 p2 = p.xy * vec2(float(textureSize)) / iResolution.xy;
    p2 = min(p2, vec2(float(textureSize) - 0.5) / iResolution.xy);
    vec2 h = texture(iChannel0, p2).xy;
    h.y += h.x;
-//    return h - boxHeight;
-   return (h - boxHeight) * (u_boxMax.z - u_boxMin.z);
+   return h - boxHeight;
+//    return (h - boxHeight) * (u_boxMax.z - u_boxMin.z);
 } 
 
 vec3 getNormal(in vec3 p, int comp)
 {
-   float d = 2.0 / float(textureSize);
+   float d = 2.0 / float(textureSize) * abs(u_boxMax.x - u_boxMin.x);
    float hMid = getHeight(p)[comp];
    float hRight = getHeight(p + vec3(d, 0, 0))[comp];
    float hTop = getHeight(p + vec3(0, 0, d))[comp];
+
+//    hMid = (hMid - u_boxMin.z)/(u_boxMax.z - u_boxMin.z);
+//    hRight = (hRight - u_boxMin.z)/(u_boxMax.z - u_boxMin.z);
+//    hTop = (hTop - u_boxMin.z)/(u_boxMax.z - u_boxMin.z);
+
    return normalize(cross(vec3(0, hTop - hMid, d), vec3(d, hRight - hMid, 0)));
 }
 
 vec3 terrainColor(in vec3 p, in vec3 n, out float spec)
 {
+   p.xy = (p.xy - u_boxMin.xy) / (u_boxMax.xy - u_boxMin.xy);
    spec = 0.1;
    vec3 c = vec3(0.21, 0.50, 0.07);
    float cliff = smoothstep(0.8, 0.3, n.y);
    c = mix(c, vec3(0.25), cliff);
    spec = mix(spec, 0.3, cliff);
-   float snow = smoothstep(0.05, 0.25, p.y) * smoothstep(0.5, 0.7, n.y);
+   float snow = smoothstep(0.05, 0.25, p.z) * smoothstep(0.5, 0.7, n.y);
    c = mix(c, vec3(0.95, 0.95, 0.85), snow);
    spec = mix(spec, 0.4, snow);
-   vec3 t = texture(iChannel1, p.xz * 5.0).xyz;
+   vec3 t = texture(iChannel1, p.xy * 5.0).xyz;
    return mix(c, c * t, 0.75);
 }
 
@@ -475,18 +487,20 @@ vec3 undergroundColor(float d)
    return mix(color[int(fl)], color[int(fl) + 1], fr);
 }
 
-
-
 vec3 Render(in vec3 ro, in vec3 rd) {
    vec3 n;
    vec3 rayDir = normalize(rd);
    vec2 ret = hitBox(ro, rayDir);
 //    vec2 ret = iBox(ro, rayDir, (u_boxMax - u_boxMin));
-//    if (ret.x > ret.y) discard;
+   if (ret.x > ret.y) discard;
 //    return vec3(ret,0.);
 //    return abs(rd);
-   ret.x = max(ret.x, 0.0);
+//    ret.x = max(ret.x, 0.0);
    vec3 p = ro + ret.x * rayDir;
+
+//    return vec3((p.xy - u_boxMin.xy) / (u_boxMax.xy - u_boxMin.xy),0.);
+//    if(p.z > (u_boxMax.z - u_boxMin.z)*0.5) return vec3(0.,1.,0.);
+//    else return vec3(0.,1.,1.);
    
    if(ret.x > 0.0) {
        vec3 pi = ro + rd * ret.x;
@@ -494,18 +508,19 @@ vec3 Render(in vec3 ro, in vec3 rd) {
        vec3 tn;
        float tt = ret.x;
        vec2 h = getHeight(pi);
+    //    return vec3(h.x);
        float spec;
        if(pi.z < h.x) {
            tn = n;
-           tc = undergroundColor(h.x - pi.z);
+           tc = undergroundColor(h.x - (pi.z - u_boxMin.z)/(u_boxMax.z - u_boxMin.z));
        }
        else {
-           for (int i = 0; i < 80; i++) {
+           for (int i = 0; i < 800; i++) {
                vec3 p = ro + rd * tt;
-               float h = p.z - getHeight(p).x;
+               float h = (p.z - u_boxMin.z)/(u_boxMax.z - u_boxMin.z) - getHeight(p).x;
                if (h < 0.0002 || tt > ret.y)
                break;
-               tt += h * 0.4;
+               tt += p.z * 0.04;
            }
            tn = getNormal(ro + rd * tt, 0);
            tc = terrainColor(ro + rd * tt, tn, spec);
@@ -517,7 +532,7 @@ vec3 Render(in vec3 ro, in vec3 rd) {
            tc += spec;
        }
        if(tt > ret.y) {
-           tc = vec3(0, 0, 0.4);
+           tc = vec3(0, 0, 0.04);
        }
        float wt = ret.x;
        h = getHeight(pi);
@@ -526,12 +541,12 @@ vec3 Render(in vec3 ro, in vec3 rd) {
            waterNormal = n;
        }
        else {
-           for (int i = 0; i < 80; i++) {
+           for (int i = 0; i < 800; i++) {
                vec3 p = ro + rd * wt;
-               float h = p.z - getHeight(p).y;
+               float h = (p.z - u_boxMin.z)/(u_boxMax.z - u_boxMin.z)  - getHeight(p).y;
                if (h < 0.0002 || wt > min(tt, ret.y))
                break;
-               wt += h * 0.4;
+               wt += p.z* 0.4;
            }
            waterNormal = getNormal(ro + rd * wt, 1);
        }
@@ -543,12 +558,12 @@ vec3 Render(in vec3 ro, in vec3 rd) {
            float spec = pow(max(0., dot(lightDir, reflect(rd, waterNormal))), 20.0);
            tc += 0.5 * spec * smoothstep(0.0, 0.1, dist);
        }else{
-        //    discard;
+           discard;
        }
        return tc;
    }
-//   discard;
-return vec3(1.,0.,0.);
+  discard;
+// return vec3(1.,0.,0.);
 }
 
 vec3 vignette(vec3 color, vec2 q, float v)
