@@ -1,4 +1,4 @@
-class CustomLayer {
+class CustomBoxLayer {
   constructor(options = {}) {
     this.id = options.id || "BoxLayer"; // 图层 ID
     this.type = "custom"; // 固定值
@@ -457,4 +457,4 @@ class CustomLayer {
   }
 }
 
-export default CustomLayer;
+export default CustomBoxLayer;

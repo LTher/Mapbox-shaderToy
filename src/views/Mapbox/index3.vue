@@ -5,7 +5,7 @@
 <script lang="js" setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import stylejs from './streets-v12.json'
-import CustomLayer from './customLayer';
+import CustomBoxLayer from './customBoxLayer';
 import ComputeLayer from './computeLayer';
 // import mapboxgl from "mapbox-gl";
 // import "mapbox-gl/dist/mapbox-gl.css";
@@ -657,7 +657,7 @@ void main()
 
     // 创建渲染层
 
-    const customLayer = new CustomLayer({
+    const myCustomBoxLayer = new CustomBoxLayer({
         texR: { width: 512, height: 512 },
         uniforms: {
             iTime: time,
@@ -671,7 +671,7 @@ void main()
         vertexShader: renderVertexShader,
         fragmentShader: Command + renderShaderSource
     });
-    // const customLayer = new CustomLayer({
+    // const myCustomBoxLayer = new CustomBoxLayer({
     //     uniforms: {
     //         u_texture: textureC,
     //         u_highlight: [1.0, 0.0, 0.0]
@@ -709,7 +709,7 @@ void main()
         map.addLayer(computeLayerB);
         map.addLayer(computeLayerC);
         map.addLayer(computeLayerD);
-        map.addLayer(customLayer);
+        map.addLayer(myCustomBoxLayer);
 
 
     });
@@ -732,11 +732,11 @@ void main()
         computeLayerD.setUniform('iFrame', frame)
         computeLayerD.setUniform('iTime', time)
 
-        customLayer.setUniform('iFrame', frame)
-        customLayer.setUniform('iTime', time)
-        customLayer.setUniform('cameraPos', newCameraPos)
-        // customLayer.setUniform('iChannel0', textureC)
-        // customLayer.setUniform('iChannel1', terrainMap)
+        myCustomBoxLayer.setUniform('iFrame', frame)
+        myCustomBoxLayer.setUniform('iTime', time)
+        myCustomBoxLayer.setUniform('cameraPos', newCameraPos)
+        // myCustomBoxLayer.setUniform('iChannel0', textureC)
+        // myCustomBoxLayer.setUniform('iChannel1', terrainMap)
 
     });
 
