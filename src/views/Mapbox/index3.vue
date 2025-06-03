@@ -47,6 +47,10 @@ onMounted(async () => {
     // 添加缩放和方向控制
     map.addControl(new mapboxgl.NavigationControl());
 
+    const viewCamera = JSON.parse('{"position":{"x":0.7647795347630167,"y":0.41202136634716663,"z":0.0020631742121587733},"orientation":[-0.09205062231110657,0.3758240254648531,-0.8956342725796784,0.219367806654034],"_renderWorldCopies":true}')
+    map.setFreeCameraOptions(viewCamera);
+
+
     const gl = map._canvas.getContext('webgl2')
 
 
@@ -169,6 +173,7 @@ out vec4 out_FragColor;
 // compute Terrain and update water level 1st pass
 uniform sampler2D iChannel0;
 uniform sampler2D iChannel1;
+uniform sampler2D heightMap;
 uniform float     iTime;
 uniform int     iFrame;
 float boxNoise( in vec2 p, in float z )
@@ -194,6 +199,13 @@ float Terrain( in vec2 p, in float z, in int octaveNum)
    return f;
 }
 
+float readTerrain(vec2 p)
+{
+//    p = clamp(p, ivec2(0), ivec2(textureSize - 1));
+//    return texelFetch(heightMap, p, 0).r;
+    return texture(heightMap, p).x * .75;
+} 
+
 vec2 readHeight(ivec2 p)
 {
    p = clamp(p, ivec2(0), ivec2(textureSize - 1));
@@ -217,8 +229,10 @@ void main( )
    vec2 uv = gl_FragCoord.xy / float(textureSize);
    float t = iTime / transitionTime;
    float terrainElevation = mix(Terrain(uv * 4.0, floor(t), octaves), Terrain(uv * 4.0, floor(t) + 1.0, octaves), smoothstep(1.0 - transitionPercent, 1.0, fract(t))) * 0.5;
+//    float terrainElevation = readTerrain(uv);
    // Water
    float waterDept = initialWaterLevel;
+   waterDept = 0.;
    if(iFrame != 0)
    {
        ivec2 p = ivec2(gl_FragCoord.xy);
@@ -231,8 +245,8 @@ void main( )
        totalInFlow += readOutFlow(p  + ivec2(-1,  0)).x;
        totalInFlow += readOutFlow(p  + ivec2( 0, -1)).y;
        waterDept = height.y - totalOutFlow + totalInFlow;
+       if(uv.x<0.05&&uv.y>.95&&iFrame<50) waterDept = .3;
    }
-//    if(uv.x<0.5&&uv.y<.5) waterDept = 0.;
    out_FragColor = vec4(terrainElevation, waterDept, 0, 1);
 }
 `;
@@ -439,8 +453,9 @@ vec2 getHeight(in vec3 p)
    vec2 p2 = p.xy * vec2(float(textureSize)) / iResolution.xy;
    p2 = min(p2, vec2(float(textureSize) - 0.5) / iResolution.xy);
    vec2 h = texture(iChannel0, p2).xy;
+//    h.y /= 200.;
    h.y += h.x;
-   return h - boxHeight;
+   return h /3. + .3;
 } 
 
 vec3 getNormal(in vec3 p, int comp)
@@ -463,7 +478,7 @@ vec3 terrainColor(in vec3 p, in vec3 n, out float spec)
    c = mix(c, vec3(0.95, 0.95, 0.85), snow);
    spec = mix(spec, 0.4, snow);
    vec3 t = texture(iChannel1, p.xy * 5.0).xyz;
-   return mix(c, c * t, 0.75);
+   return mix(c, c * t, 0.75)* (vec3(214.,160.,29.) / 255.) *4.;
 }
 
 vec3 undergroundColor(float d)
@@ -490,6 +505,7 @@ vec3 Render(in vec3 ro, in vec3 rd) {
        vec3 tn;
        float tt = ret.x;
        vec2 h = getHeight(npi);
+    //    return vec3(h.xy,0.);
     //    return vec3(h.y);
        float spec;
        if(npi.z < h.x) {
@@ -503,7 +519,7 @@ vec3 Render(in vec3 ro, in vec3 rd) {
                float h = np.z - getHeight(np).x;
                if (h < 0.0002 || tt > ret.y)
                break;
-               tt += p.z * 0.04;
+               tt += (ret.y-ret.x) * 0.004;
            }
            tn = getNormal(normalizeP(ro + rd * tt), 0);
            tc = terrainColor(normalizeP(ro + rd * tt), tn, spec);
@@ -512,7 +528,7 @@ vec3 Render(in vec3 ro, in vec3 rd) {
            vec3 lightDir = normalize(light - normalizeP(ro + rd * tt));
            tc = tc * (max( 0.0, dot(lightDir, tn)) + 0.3);
            spec *= pow(max(0., dot(lightDir, reflect(rd, tn))), 10.0);
-           tc += spec;
+        //    tc += spec;
        }
        if(tt > ret.y) {
            tc = vec3(0, 0, 0.04);
@@ -530,7 +546,7 @@ vec3 Render(in vec3 ro, in vec3 rd) {
                float h = np.z  - getHeight(np).y;
                if (h < 0.0002 || wt > min(tt, ret.y))
                break;
-               wt += p.z* 0.04;
+               wt += (ret.y-ret.x)* 0.004;
            }
            waterNormal = getNormal(normalizeP(ro + rd * wt), 1);
        }
@@ -571,12 +587,15 @@ void main()
 
     let time = 0, frame = 0, resolution = [512, 512]
 
-    const textureA = createColoredTexture(gl, [0, 0, 255, 128], { textureUnit: 0 });
-    const textureB = createColoredTexture(gl, [0, 0, 255, 128], { textureUnit: 0 });
-    const textureC = createColoredTexture(gl, [0, 0, 255, 128], { textureUnit: 0 });
-    const textureD = createColoredTexture(gl, [0, 0, 255, 128], { textureUnit: 0 });
+    const textureA = createColoredTexture(gl, [0, 0, 0, 0], { textureUnit: 0 });
+    const textureB = createColoredTexture(gl, [0, 0, 0, 0], { textureUnit: 1 });
+    const textureC = createColoredTexture(gl, [0, 0, 0, 0], { textureUnit: 2 });
+    const textureD = createColoredTexture(gl, [0, 0, 0, 0], { textureUnit: 3 });
 
     const terrainMap = await createTextureFromURL(gl, '/terrain.jpg')
+
+    // const heightMap = await createTextureFromURL(gl, '/tif1.png')
+    const heightMap = genDem(gl);
 
     const textureImg = createTextureFromURL(gl, '/1.png')
     const blueTexture = createColoredTexture(gl, [0, 0, 255, 128], { textureUnit: 1 });
@@ -590,7 +609,9 @@ void main()
             iFrame: frame,
             iChannel0: textureC,
             iChannel1: textureD,
+            heightMap: heightMap
         },
+        // textureUnit: 0,
         outputTexture: textureA,
         fragmentShader: Command + BufferA
     });
@@ -603,6 +624,7 @@ void main()
             iChannel0: textureA,
             iChannel1: textureD,
         },
+        // textureUnit: 2,
         outputTexture: textureB,
         fragmentShader: Command + BufferB
     });
@@ -615,6 +637,7 @@ void main()
             iChannel0: textureA,
             iChannel1: textureB,
         },
+        // textureUnit: 4,
         outputTexture: textureC,
         fragmentShader: Command + BufferC
     });
@@ -627,6 +650,7 @@ void main()
             iChannel0: textureC,
             iChannel1: textureB,
         },
+        // textureUnit: 6,
         outputTexture: textureD,
         fragmentShader: Command + BufferD
     });
@@ -643,6 +667,7 @@ void main()
             iChannel0: textureC,
             iChannel1: terrainMap,
         },
+        // textureUnit: 0,
         vertexShader: renderVertexShader,
         fragmentShader: Command + renderShaderSource
     });
@@ -696,16 +721,23 @@ void main()
         time = now / 1000.;
         frame += 0.02;
         computeLayerA.setUniform('iFrame', frame)
-        computeLayerA.setUniform('iTime', time)
+        // computeLayerA.setUniform('iTime', time)
+
         computeLayerB.setUniform('iFrame', frame)
         computeLayerB.setUniform('iTime', time)
+
         computeLayerC.setUniform('iFrame', frame)
         computeLayerC.setUniform('iTime', time)
+
         computeLayerD.setUniform('iFrame', frame)
         computeLayerD.setUniform('iTime', time)
+
         customLayer.setUniform('iFrame', frame)
         customLayer.setUniform('iTime', time)
         customLayer.setUniform('cameraPos', newCameraPos)
+        // customLayer.setUniform('iChannel0', textureC)
+        // customLayer.setUniform('iChannel1', terrainMap)
+
     });
 
 });
@@ -843,6 +875,120 @@ function createColoredTexture(gl, color, options = {}) {
         pixels
     );
 
+    return texture;
+}
+
+const genDem = (gl) => {
+    // 1. 创建WebGL2上下文
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    if (!gl) throw new Error("WebGL2 not supported");
+
+    // 2. 创建纹理
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    // 3. 创建FBO
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+    // 4. 着色器程序
+    const vertShader = `#version 300 es
+in vec2 position;
+void main() {
+    gl_Position = vec4(position, 0, 1);
+}`;
+
+    const fragShader = `#version 300 es
+precision highp float;
+out vec4 fragColor;
+
+// 噪声函数 (简化版)
+float noise(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+// 河道生成函数
+float river(vec2 uv) {
+    // 主河道蜿蜒路径 (使用正弦波模拟)
+    float riverPath = sin(uv.x * 10.0) * 0.1 + sin(uv.x * 30.0) * 0.03;
+    
+    // 河道宽度 (渐变)
+    float riverWidth = 0.03 + smoothstep(0.0, 1.0, uv.x) * 0.02;
+    
+    // 计算到河道的距离
+    float dist = abs(uv.y - 0.5 - riverPath);
+    
+    // 平滑的河道边缘
+    return smoothstep(riverWidth, riverWidth - 0.01, dist);
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / vec2(512.0);
+    
+    // 生成河道 (值为1表示河道，0表示陆地)
+    float riverValue = river(uv);
+    
+    // 噪声模拟地面高程
+    float elevation = noise(uv * 10.0) * 0.3 + 0.7;
+    
+    // 混合河道和地面
+    float finalValue = mix(elevation, 1.0, riverValue);
+    
+    // RGBA分量相等 (灰度图)
+    fragColor = vec4(vec3(finalValue), 1.0);
+}`;
+
+    // 编译着色器
+    function compileShader(gl, source, type) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            console.error(gl.getShaderInfoLog(shader));
+            gl.deleteShader(shader);
+            return null;
+        }
+        return shader;
+    }
+
+    const vs = compileShader(gl, vertShader, gl.VERTEX_SHADER);
+    const fs = compileShader(gl, fragShader, gl.FRAGMENT_SHADER);
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    gl.useProgram(program);
+
+    // 5. 渲染全屏四边形
+    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+    const positionLoc = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
+
+    // 6. 执行渲染
+    gl.viewport(0, 0, 512, 512);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // 7. 解绑FBO
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    // 8. 获取纹理数据 (可选)
+    const pixels = new Uint8Array(512 * 512 * 4);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    // 现在texture就是包含河道和高程的纹理
+    console.log("纹理创建完成");
     return texture;
 }
 </script>

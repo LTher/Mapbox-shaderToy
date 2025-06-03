@@ -121,7 +121,9 @@ class CustomLayer {
 
     // 转换为墨卡托坐标
     const positions = [];
-    const xValues = [], yValues = [], zValues = [];
+    const xValues = [],
+      yValues = [],
+      zValues = [];
     corners.forEach((corner) => {
       const mkt = mapboxgl.MercatorCoordinate.fromLngLat(
         { lng: corner[0], lat: corner[1] },
@@ -133,7 +135,7 @@ class CustomLayer {
       positions.push(mkt.x, mkt.y, mkt.z);
     });
 
-    debugger
+    debugger;
     // 计算实际包围盒范围
     this.actualBox = {
       minX: Math.min(...xValues),
@@ -155,7 +157,7 @@ class CustomLayer {
       this.actualBox.maxY,
       this.actualBox.maxZ,
     ];
-    debugger
+    debugger;
 
     // 定义纹理坐标
     const texCoords = [
@@ -385,6 +387,21 @@ class CustomLayer {
     gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);
 
     // 清理
+    {
+      let textureUnit = 0;
+      for (const name in this.uniforms) {
+        const value = this.uniforms[name];
+        if (value instanceof WebGLTexture) {
+          const location = this.uniformLocations[name];
+          if (location != null) {
+            gl.activeTexture(gl.TEXTURE0 + textureUnit);
+            gl.bindTexture(gl.TEXTURE_2D, null); // 解绑
+            textureUnit++;
+          }
+        }
+      }
+    }
+
     gl.bindVertexArray(null);
   }
 

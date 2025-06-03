@@ -184,6 +184,7 @@ class ComputeLayer {
       this.outputTexture,
       0
     );
+    gl.disable(gl.BLEND);
 
     // 设置视口大小匹配纹理尺寸
     // const textureSize = this.getTextureSize(gl, this.outputTexture);
@@ -254,6 +255,21 @@ class ComputeLayer {
 
     // 绘制全屏四边形
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    {
+      let textureUnit = 0;
+      for (const name in this.uniforms) {
+        const value = this.uniforms[name];
+        if (value instanceof WebGLTexture) {
+          const location = this.uniformLocations[name];
+          if (location != null) {
+            gl.activeTexture(gl.TEXTURE0 + textureUnit);
+            gl.bindTexture(gl.TEXTURE_2D, null); // 解绑
+            textureUnit++;
+          }
+        }
+      }
+    }
 
     // 清理
     gl.bindVertexArray(null);
