@@ -8,10 +8,10 @@ class CustomBoxLayer {
     this.box = options.box || {
       minLng: 94.6674,
       minLat: 29.4441,
-      minHeight: 0,
+      minHeight: 22000,
       maxLng: 95.2674,
       maxLat: 29.8441,
-      maxHeight: 32000,
+      maxHeight: 52000,
     };
 
     // 默认顶点着色器（支持自定义attributes和uniforms）
@@ -135,7 +135,6 @@ class CustomBoxLayer {
       positions.push(mkt.x, mkt.y, mkt.z);
     });
 
-    debugger;
     // 计算实际包围盒范围
     this.actualBox = {
       minX: Math.min(...xValues),
@@ -157,7 +156,6 @@ class CustomBoxLayer {
       this.actualBox.maxY,
       this.actualBox.maxZ,
     ];
-    debugger;
 
     // 定义纹理坐标
     const texCoords = [
@@ -382,6 +380,9 @@ class CustomBoxLayer {
     // 启用深度测试
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
+
+    // gl.enable(gl.BLEND);
+    // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // 标准混合模式
 
     // 绘制盒子
     gl.drawElements(gl.TRIANGLES, 36, gl.UNSIGNED_SHORT, 0);

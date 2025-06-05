@@ -21,7 +21,7 @@ const router = createRouter({
     {
       path: "/maptest",
       name: "maptest",
-      component: () => import("@/views/Mapbox/index3.vue"),
+      component: () => import("@/views/Mapbox/index.vue"),
       meta: {
         title: "测试页",
       },

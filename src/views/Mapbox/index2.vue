@@ -548,7 +548,6 @@ void main()
 
     const camera = map.getFreeCameraOptions();
     const cameraPos = [camera._position.x, camera._position.y, camera._position.z]
-    debugger
 
     let time = 0, frame = 0, resolution = [512, 512]
 
