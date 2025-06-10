@@ -166,10 +166,10 @@ class WaterSimulate {
     this.box = {
       minLng: minp[0],
       minLat: minp[1],
-      minHeight: this.min,
+      minHeight: this.min + 100,
       maxLng: maxp[0],
       maxLat: maxp[1],
-      maxHeight: this.max,
+      maxHeight: this.max + 100,
     };
     debugger;
 
@@ -639,7 +639,8 @@ vec3 terrainColor(in vec3 p, in vec3 n, out float spec)
    c = mix(c, vec3(0.95, 0.95, 0.85), snow);
    spec = mix(spec, 0.4, snow);
    vec3 t = texture(iChannel1, p.xy * 5.0).xyz;
-   return mix(c, c * t, 0.75)* (vec3(214.,160.,29.) / 255.) *4.;
+  //  return mix(c, c * t, 0.75)* (vec3(214.,160.,29.) / 255.) *4.;
+   return vec3(0.);
 }
 
 vec3 undergroundColor(float d)
@@ -674,13 +675,13 @@ vec4 Render(in vec3 ro, in vec3 rd) {
            tc.xyz = undergroundColor(h.x - npi.z);
        }
        else {
-           for (int i = 0; i < 800; i++) {
+           for (int i = 0; i < 200; i++) {
                vec3 p = ro + rd * tt;
                vec3 np = normalizeP(p);
                float h = np.z - getHeight(np).x;
-               if (h < 0.002 || tt > ret.y)
+               if (h < 0.0002 || tt > ret.y)
                break;
-               tt += (ret.y-ret.x) * 0.002;
+               tt += (ret.y-ret.x) /150.0;
            }
            tn = getNormal(normalizeP(ro + rd * tt), 0);
            tc.xyz = terrainColor(normalizeP(ro + rd * tt), tn, spec);
@@ -705,9 +706,9 @@ vec4 Render(in vec3 ro, in vec3 rd) {
                vec3 p = ro + rd * wt;
                vec3 np = normalizeP(p);
                float h = np.z  - getHeight(np).y;
-               if (h < 0.002 || wt > min(tt, ret.y))
+               if (h < 0.0004 || wt > min(tt, ret.y))
                break;
-               wt += (ret.y-ret.x)* 0.002;
+               wt += (ret.y-ret.x) /150.0;
            }
            waterNormal = getNormal(normalizeP(ro + rd * wt), 1);
        }
@@ -722,7 +723,8 @@ vec4 Render(in vec3 ro, in vec3 rd) {
            discard;
        }
        tc.a=1.;
-       if(tt -wt < 0.000000001 ) discard;
+      //  if(tt -wt < (ret.y-ret.x) / 120. ) discard;
+       if(tc.xyz==vec3(0.))tc.a=0.;
        return tc;
    }
   discard;
@@ -861,7 +863,7 @@ void main()
       // 在每一帧中执行的逻辑
       const now = performance.now();
       time = now / 1000;
-      frame += 0.02;
+      frame += 0.01;
       computeLayerA.setUniform("iFrame", frame);
       // computeLayerA.setUniform('iTime', time)
 
@@ -877,6 +879,8 @@ void main()
       myCustomBoxLayer.setUniform("iFrame", frame);
       myCustomBoxLayer.setUniform("iTime", time);
       myCustomBoxLayer.setUniform("cameraPos", newCameraPos);
+
+      // myCustomBoxLayer.setUniform("u_matrix", map.transform.mercatorMatrix.slice());
       // myCustomBoxLayer.setUniform('iChannel0', textureC)
       // myCustomBoxLayer.setUniform('iChannel1', terrainMap)
     });
@@ -885,9 +889,9 @@ void main()
     //   '{"position":{"x":0.7639722167626107,"y":0.41299299824297137,"z":0.0023821707297549876},"orientation":[-0.02182992592397022,0.19660918000605684,-0.9742519384761601,0.10817321778954461],"_renderWorldCopies":true}'
     // );
     const viewCamera = JSON.parse(
-        '{"position":{"x":0.7436788867347409,"y":0.4188306458438292,"z":0.0003806961584104004},"orientation":[-0.006169343503937063,0.4249180184114985,-0.9051154199939287,0.013141283011550695],"_renderWorldCopies":true}'
-      );
-      map.setFreeCameraOptions(viewCamera);
+      '{"position":{"x":0.7436788867347409,"y":0.4188306458438292,"z":0.0003806961584104004},"orientation":[-0.006169343503937063,0.4249180184114985,-0.9051154199939287,0.013141283011550695],"_renderWorldCopies":true}'
+    );
+    map.setFreeCameraOptions(viewCamera);
   }
 
   addWater(position, strenght) {
